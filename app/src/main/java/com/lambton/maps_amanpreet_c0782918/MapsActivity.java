@@ -104,7 +104,71 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             startUpdateLocation();
 
 
-       
+        // apply long press gesture
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+//                Location location = new Location("Your Destination");
+//                location.setLatitude(latLng.latitude);
+//                location.setLongitude(latLng.longitude);
+
+                MarkerOptions markerOptions = new MarkerOptions()
+                        .position(latLng)
+                        .title(latLng.latitude + " : " + latLng.longitude);
+
+                // check if there are already the same number of markers, we clear the map.
+                if (markers.size() == POLYGON_SIDES)
+                    clearMap();
+
+                markers.add(mMap.addMarker(markerOptions));
+                if (markers.size() == POLYGON_SIDES)
+                    drawShape();
+
+//                mMap.addMarker(markerOptions);
+
+                  // set marker
+//                setMarker(latLng);
+            }
+
+            private void setMarker(LatLng latLng) {
+                MarkerOptions options = new MarkerOptions().position(latLng)
+                        .title("")
+                        .snippet("You are here");
+
+                // check if there are already the same number of markers, we clear the map.
+                if (markers.size() == POLYGON_SIDES)
+                    clearMap();
+
+                markers.add(mMap.addMarker(options));
+                if (markers.size() == POLYGON_SIDES)
+                    drawShape();
+            }
+
+            private void drawShape() {
+                PolygonOptions options = new PolygonOptions()
+                        .fillColor(0x3500FF00)
+                        .strokeColor(Color.RED)
+                        .strokeWidth(5);
+
+                for (int i=0; i<POLYGON_SIDES; i++) {
+                    options.add(markers.get(i).getPosition());
+                }
+
+                shape = mMap.addPolygon(options);
+
+            }
+
+            private void clearMap() {
+
+                for (Marker marker: markers)
+                    marker.remove();
+
+                markers.clear();
+                shape.remove();
+                shape = null;
+            }
+
+        });
     }
 
     private void startUpdateLocation() {
@@ -122,6 +186,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
+    private void setHomeMarker(Location location) {
+        LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
+        MarkerOptions options = new MarkerOptions().position(userLocation)
+                .title("You are here")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                .snippet("Your Location");
+        homeMarker = mMap.addMarker(options);
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 15));
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
