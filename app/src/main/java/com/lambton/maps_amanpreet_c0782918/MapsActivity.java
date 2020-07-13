@@ -194,7 +194,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 Toast.makeText(MapsActivity.this, "distance " + ( (float) results[0]) / 1000+ " KM" , Toast.LENGTH_SHORT).show();
 
-                distMarker(midValue,( (float) results[0]) / 1000,null);
+//                distMarker(midValue,( (float) results[0]) / 1000,null);
             }
 
             private void distMarker(LatLng latLng, double distance, String snippet)
