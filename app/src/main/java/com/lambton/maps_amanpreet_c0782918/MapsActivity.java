@@ -30,6 +30,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
@@ -169,9 +170,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     Location.distanceBetween(polygon.getPoints().get(i).latitude,polygon.getPoints().get(i).longitude,polygon.getPoints().get(i+1).latitude,polygon.getPoints().get(i+1).longitude,results);
                     distance +=  ((float) results[0])/1000;
 
+
                 }
 
-                Toast.makeText(MapsActivity.this, "Total Distance: " +distance , Toast.LENGTH_SHORT).show();
+                Toast.makeText(MapsActivity.this, "Total Distance is: " +(String.format (Locale.CANADA,"%.2f KM",distance)) , Toast.LENGTH_SHORT).show();
 
             }
         });
@@ -179,26 +181,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnPolylineClickListener(new GoogleMap.OnPolylineClickListener() {
             @Override
             public void onPolylineClick(Polyline polyline) {
+
 //                Toast.makeText(MapsActivity.this, "onPolylineClick", Toast.LENGTH_SHORT).show();
                 LatLng location1 = polyline.getPoints().get(0);
                 LatLng location2 = polyline.getPoints().get(1);
+
 
 //                double distance = getDistanceMeters(location1.latitude,location1.longitude,location2.latitude,location2.latitude);
 
                 LatLng midValue = midPoint(location1.latitude, location1.longitude, location2.latitude, location2.longitude);
 
-
                 float[] results = new float[1];
 
                 Location.distanceBetween(location1.latitude, location1.longitude, location2.latitude, location2.longitude, results);
 
-                Toast.makeText(MapsActivity.this, "distance " + ( (float) results[0]) / 1000+ " KM" , Toast.LENGTH_SHORT).show();
+                float distance = (results[0]) / 1000;
 
-//                distMarker(midValue,( (float) results[0]) / 1000,null);
+                Toast.makeText(MapsActivity.this, "Distance is " + (String.format (Locale.CANADA,"%.2f KM",distance)), Toast.LENGTH_SHORT).show();
+
+//                distMarker(midValue,( (float) results[0]),null);
             }
 
             private void distMarker(LatLng latLng, double distance, String snippet)
             {
+                
                 BitmapDescriptor transparent = BitmapDescriptorFactory.fromResource(R.mipmap.transparent);
                 MarkerOptions options = new MarkerOptions()
                         .position(latLng)
@@ -214,6 +220,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
 
             public LatLng midPoint(double lat1,double lon1,double lat2,double lon2){
+
+
 
                 double dLon = Math.toRadians(lon2 - lon1);
 
@@ -246,6 +254,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        }
 //     return ;
 //    }
+
+    private LatLng getPolygonCenterPoint(ArrayList<LatLng> polygonPointsList){
+        LatLng centerLatLng = null;
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        for(int i = 0 ; i < polygonPointsList.size() ; i++)
+        {
+            builder.include(polygonPointsList.get(i));
+        }
+        LatLngBounds bounds = builder.build();
+        centerLatLng =  bounds.getCenter();
+
+        return centerLatLng;
+    }
 
     private void setMarker(LatLng latLng) {
 
@@ -378,7 +399,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Rect bounds = new Rect();
         paint.getTextBounds(text, 0, text.length(), bounds);
 
-        int x = bitmap.getWidth() - bounds.width() - 15; // 10 for padding from right
+        int x = bitmap.getWidth() - bounds.width() - 15 ; // 10 for padding from right
         int y = bounds.height();
         canvas.drawText(text, x, y, paint);
 
