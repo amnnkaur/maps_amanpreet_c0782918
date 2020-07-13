@@ -7,7 +7,13 @@ import androidx.fragment.app.FragmentActivity;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -21,6 +27,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -29,7 +36,6 @@ import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
-import com.google.maps.android.ui.BubbleIconFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,13 +43,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
-import static java.lang.StrictMath.acos;
-import static java.lang.StrictMath.cos;
-import static java.lang.StrictMath.sin;
-import static java.lang.StrictMath.toRadians;
+import static android.graphics.Bitmap.Config.ARGB_8888;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
+    private static final String TAG = "MapsActivity" ;
     private GoogleMap mMap;
 
     private static final int REQUEST_CODE = 1;
@@ -132,117 +136,98 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onMapClick(LatLng latLng) {
                 setMarker(latLng);
             }
+        });
 
-            private void setMarker(LatLng latLng) {
-
-                HashMap<String, String> markerPoint = new HashMap<>();
-                markerPoint = geoCoder(latLng);
-
-                MarkerOptions options = new MarkerOptions().position(latLng)
-                        .title(markerPoint.get("thoroughfare") + "," + markerPoint.get("subThoroughfare" )+ "," + markerPoint.get("postalCode"))
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
-                        .snippet(markerPoint.get("locality") + "," + markerPoint.get("adminArea"));
-
-
-                if(markers.size() == POLYGON_SIDES){
-                    mMap.clear();
-                    clearMap(); }
-
-                Marker marker = mMap.addMarker(options);
-                drawLine(marker);
-                firstMarker = marker;
-                markers.add(marker);
-                if(markers.size() == POLYGON_SIDES){ drawShape(); }
+        mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+            @Override
+            public void onMarkerDragStart(Marker marker) {
 
             }
 
-            private void clearMap() {
+            @Override
+            public void onMarkerDrag(Marker marker) {
 
-                for (Marker marker : markers) {
-                    marker.remove();
-                }
-                markers.clear();
-                shape.remove();
-                line.remove();
-                shape = null;
-                line = null;
-                polylineList.clear();
-                latLngList.clear();
             }
 
-            private void drawShape() {
+            @Override
+            public void onMarkerDragEnd(Marker marker) {
 
-                PolygonOptions options = new PolygonOptions()
-                        .clickable(true)
-                        .fillColor(0x3500FF00)
-                        .strokeColor(Color.RED)
-                        .strokeWidth(10);
+                setMarker(marker.getPosition());
 
-                for(int i = 0; i < POLYGON_SIDES; i++){
-                    Marker marker = markers.get(i);
-                    latLngList.add(marker.getPosition());
-
-                }
-
-                for (Polyline polyline : polylineList){
-                    polyline.remove();
-                }
-                polylineList.clear();
-
-
-                for (int i = 0; i < POLYGON_SIDES; i++) {
-
-                    int last;
-                    if (i+1 == POLYGON_SIDES){last = 0; }
-                    else {last = i+1;}
-
-                    drawLine(latLngList.get(i), latLngList.get(last));
-                }
-
-                for (LatLng latLng : latLngList)
-                {
-                    options.add(latLng);
-                }
-
-                shape = mMap.addPolygon(options);
             }
+        });
 
-            private void drawLine(LatLng latLng1, LatLng latLng2) {
-                PolylineOptions options = new PolylineOptions()
-                        .clickable(true)
-                        .color(Color.RED)
-                        .width(10)
-                        .add(latLng1,latLng2);
-                line = mMap.addPolyline(options);
-            }
+        mMap.setOnPolygonClickListener(new GoogleMap.OnPolygonClickListener() {
+            @Override
+            public void onPolygonClick(Polygon polygon) {
+                Log.d(TAG, "onPolygonClick: " +polygon.getPoints());
+                float[] results = new float[1];
+                double distance = 0.0;
 
-            private void drawLine(Marker marker)
-            {
-                if (firstMarker != null) {
-                    PolylineOptions polylineOptions = new PolylineOptions()
-                            .clickable(true)
-                            .color(Color.RED)
-                            .width(20)
-                            .add(marker.getPosition(), firstMarker.getPosition());
-                    polylineList.add(mMap.addPolyline(polylineOptions));
+                for (int i = 0; i<POLYGON_SIDES; i++) {
+
+                    Location.distanceBetween(polygon.getPoints().get(i).latitude,polygon.getPoints().get(i).longitude,polygon.getPoints().get(i+1).latitude,polygon.getPoints().get(i+1).longitude,results);
+                    distance +=  ((float) results[0])/1000;
+
                 }
+
+                Toast.makeText(MapsActivity.this, "Total Distance: " +distance , Toast.LENGTH_SHORT).show();
+
             }
         });
 
         mMap.setOnPolylineClickListener(new GoogleMap.OnPolylineClickListener() {
             @Override
             public void onPolylineClick(Polyline polyline) {
-                Toast.makeText(MapsActivity.this, "onPolineClick", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(MapsActivity.this, "onPolylineClick", Toast.LENGTH_SHORT).show();
                 LatLng location1 = polyline.getPoints().get(0);
                 LatLng location2 = polyline.getPoints().get(1);
 
 //                double distance = getDistanceMeters(location1.latitude,location1.longitude,location2.latitude,location2.latitude);
+
+                LatLng midValue = midPoint(location1.latitude, location1.longitude, location2.latitude, location2.longitude);
+
 
                 float[] results = new float[1];
 
                 Location.distanceBetween(location1.latitude, location1.longitude, location2.latitude, location2.longitude, results);
 
                 Toast.makeText(MapsActivity.this, "distance " + ( (float) results[0]) / 1000+ " KM" , Toast.LENGTH_SHORT).show();
+
+                distMarker(midValue,( (float) results[0]) / 1000,null);
+            }
+
+            private void distMarker(LatLng latLng, double distance, String snippet)
+            {
+                BitmapDescriptor transparent = BitmapDescriptorFactory.fromResource(R.mipmap.transparent);
+                MarkerOptions options = new MarkerOptions()
+                        .position(latLng)
+                        .title(String.format(Locale.CANADA,"%.2f Km", distance))
+                        .snippet(snippet)
+                        .icon(transparent)
+                        .anchor((float) 0.5, (float) 0.5);
+
+                Marker marker = mMap.addMarker(options);
+
+                //open the marker's info window
+                marker.showInfoWindow();
+            }
+
+            public LatLng midPoint(double lat1,double lon1,double lat2,double lon2){
+
+                double dLon = Math.toRadians(lon2 - lon1);
+
+                //convert to radians
+                lat1 = Math.toRadians(lat1);
+                lat2 = Math.toRadians(lat2);
+                lon1 = Math.toRadians(lon1);
+
+                double Bx = Math.cos(lat2) * Math.cos(dLon);
+                double By = Math.cos(lat2) * Math.sin(dLon);
+                double lat3 = Math.atan2(Math.sin(lat1) + Math.sin(lat2), Math.sqrt((Math.cos(lat1) + Bx) * (Math.cos(lat1) + Bx) + By * By));
+                double lon3 = lon1 + Math.atan2(By, Math.cos(lat1) + Bx);
+
+                return new LatLng(Math.toDegrees(lat3), Math.toDegrees(lon3));
 
             }
         });
@@ -255,17 +240,150 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        double g1 = toRadians(lng1);
 //        double g2 = toRadians(lng2);
 //
-////        double dist = acos(sin(l1) * sin(l2) + cos(l1) * cos(l2) * cos(g1 - g2));
-////        if(dist < 0) {
-////            dist = dist + Math.PI;
-////        }
-//
-//        float[] results = new float[1];
-//
-//        Location.distanceBetween(l1, g1, l2, g2, results);
-//
-////        return ;
+//       double dist = acos(sin(l1) * sin(l2) + cos(l1) * cos(l2) * cos(g1 - g2));
+//        if(dist < 0) {
+//            dist = dist + Math.PI;
+//        }
+//     return ;
 //    }
+
+    private void setMarker(LatLng latLng) {
+
+        HashMap<String, String> markerPoint = new HashMap<>();
+        markerPoint = geoCoder(latLng);
+
+        Log.d(TAG, "setMarker: " +markerPoint.get("postalCode"));
+
+        String letters = "A";
+        if (markers.size() ==0) {
+            letters = "A";
+        }
+            if (markers.size() ==1) {
+                letters = "B";
+            }
+                if (markers.size() ==2) {
+                    letters = "C";
+                }
+                    if (markers.size() ==3) {
+                        letters = "D";
+                    }
+
+        MarkerOptions options = new MarkerOptions().position(latLng)
+                .draggable(true)
+                .title(markerPoint.get("thoroughfare") + "," + markerPoint.get("subThoroughfare" )+ "," + markerPoint.get("postalCode"))
+                .icon(BitmapDescriptorFactory.fromBitmap(makeBitmap(this,letters)))
+                .snippet(markerPoint.get("locality") + "," + markerPoint.get("adminArea"));
+
+
+        if(markers.size() == POLYGON_SIDES){
+            firstMarker = null;
+            mMap.clear();
+            clearMap(); }
+
+        Marker marker = mMap.addMarker(options);
+        drawLine(marker);
+        firstMarker = marker;
+        markers.add(marker);
+        if(markers.size() == POLYGON_SIDES){
+            drawShape(); }
+
+    }
+
+    private void drawShape() {
+
+        PolygonOptions options = new PolygonOptions()
+                .clickable(true)
+                .fillColor(0x3500FF00)
+                .strokeColor(Color.RED)
+                .strokeWidth(10);
+
+        for(int i = 0; i < POLYGON_SIDES; i++){
+            Marker marker = markers.get(i);
+            latLngList.add(marker.getPosition());
+        }
+
+        for (Polyline polyline : polylineList){
+            polyline.remove();
+        }
+        polylineList.clear();
+
+
+        for (int i = 0; i < POLYGON_SIDES; i++) {
+
+            int last;
+            if (i+1 == POLYGON_SIDES){last = 0; }
+            else {last = i+1;}
+
+            drawLine(latLngList.get(i), latLngList.get(last));
+        }
+
+        for (LatLng latLng : latLngList)
+        {
+            options.add(latLng);
+        }
+
+        shape = mMap.addPolygon(options);
+    }
+
+    private void clearMap() {
+
+        polylineList.clear();
+        latLngList.clear();
+
+        for (Marker marker : markers) {
+            marker.remove();
+        }
+
+        markers.clear();
+        shape.remove();
+        line.remove();
+        shape = null;
+        line = null;
+
+    }
+
+    private void drawLine(LatLng latLng1, LatLng latLng2) {
+        PolylineOptions options = new PolylineOptions()
+                .clickable(true)
+                .color(Color.RED)
+                .width(10)
+                .add(latLng1,latLng2);
+        line = mMap.addPolyline(options);
+    }
+
+    private void drawLine(Marker marker)
+    {
+        if (firstMarker != null) {
+            PolylineOptions polylineOptions = new PolylineOptions()
+                    .clickable(true)
+                    .color(Color.RED)
+                    .width(20)
+                    .add(marker.getPosition(), firstMarker.getPosition());
+            polylineList.add(mMap.addPolyline(polylineOptions));
+        }
+    }
+
+    public Bitmap makeBitmap(Context context, String text)
+    {
+        Resources resources = context.getResources();
+        float scale = resources.getDisplayMetrics().density;
+        Bitmap bitmap = BitmapFactory.decodeResource(resources, R.drawable.marker);
+        bitmap = bitmap.copy(ARGB_8888, true);
+
+        Canvas canvas = new Canvas(bitmap);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.BLACK); // Text color
+        paint.setTextSize(20 * scale); // Text size
+        paint.setShadowLayer(1f, 0f, 1f, Color.GRAY); // Text shadow
+        Rect bounds = new Rect();
+        paint.getTextBounds(text, 0, text.length(), bounds);
+
+        int x = bitmap.getWidth() - bounds.width() - 15; // 10 for padding from right
+        int y = bounds.height();
+        canvas.drawText(text, x, y, paint);
+
+        return bitmap;
+    }
 
     private void startUpdateLocations() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -321,32 +439,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         try {
             List<Address> addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1);
             if (addresses != null && addresses.size() > 0) {
-                String address = "";
                 if (addresses.get(0).getAdminArea() != null)
-                    address += addresses.get(0).getAdminArea() + " ";
                 markerPoint.put("adminArea", addresses.get(0).getAdminArea());
 
                 if (addresses.get(0).getLocality() != null)
-                    address += addresses.get(0).getLocality() + " ";
                 markerPoint.put("locality", addresses.get(0).getLocality());
 
                 if (addresses.get(0).getPostalCode() != null)
-                    address += addresses.get(0).getPostalCode() + " ";
                 markerPoint.put("postalCode", addresses.get(0).getPostalCode());
 
                 if (addresses.get(0).getThoroughfare() != null)
-                    address += addresses.get(0).getThoroughfare() + " ";
                 markerPoint.put("thoroughfare", addresses.get(0).getThoroughfare());
 
                 if (addresses.get(0).getSubThoroughfare() != null)
-                    address += addresses.get(0).getSubThoroughfare();
                 markerPoint.put("subThoroughfare", addresses.get(0).getSubThoroughfare());
 
-//                Toast.makeText(MapsActivity.this, address, Toast.LENGTH_SHORT).show();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        Log.d(TAG, "geoCoder: " +markerPoint.get("postalCode"));
 
         return markerPoint;
     }
